@@ -23,7 +23,7 @@ Generate standardized datasets for profiling with varying N (individuals), M (SN
 
 **On Perlmutter (recommended for large datasets):**
 ```bash
-# Submit SLURM array job to generate all 9 datasets in parallel
+# Submit SLURM array job to generate all 7 datasets in parallel
 ./submit_dataset_generation.sh
 
 # Monitor progress
@@ -36,7 +36,7 @@ sacct -j <JOB_ID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS
 
 **On local machine:**
 ```bash
-# Generate all profiling datasets (9 total, runs serially)
+# Generate all profiling datasets (7 total, runs serially)
 ./generate_profiling_data.sh
 
 # Or generate a single dataset
@@ -46,11 +46,9 @@ sacct -j <JOB_ID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS
 This creates datasets in `sim_data/` with structure: `sim_data/{label}_N{N}_L{L}/`
 
 Dataset sizes:
-- **small**: N=5,000, ~100k SNPs (seq_length=250M)
-- **medium**: N=50,000, ~500k SNPs (seq_length=1.25G)
-- **large**: N=200,000, ~1M SNPs (seq_length=2.5G)
-
-Environmental factors (L): 1, 4, or 10
+- **small**: N=5,000, ~100k SNPs (seq_length=250M), L=1/4/10
+- **medium**: N=50,000, ~500k SNPs (seq_length=1.25G), L=1/4/10
+- **large**: N=200,000, ~1M SNPs (seq_length=2.5G), **L=10 only** (L=1/4 skipped due to runtime)
 
 Each dataset contains:
 - `genotypes.bed/bim/fam` - PLINK binary format (MAF > 0.05)
@@ -59,11 +57,11 @@ Each dataset contains:
 - `covariates.csv` - Covariates (header: C1,C2,C3)
 
 **SLURM array job details:**
-- Runs 9 tasks in parallel (array=0-8)
+- Runs 7 tasks in parallel (array=0-6)
 - Each task: 1 node, 16 CPUs, 64GB RAM, 24h time limit
 - Uses UV_CACHE_DIR for shared uv package cache
 - VCF files deleted after conversion to save space
-- Task mapping: tasks 0-2 (small, L=1/4/10), 3-5 (medium, L=1/4/10), 6-8 (large, L=1/4/10)
+- Task mapping: 0-2 (small L=1/4/10), 3-5 (medium L=1/4/10), 6 (large L=10)
 
 ### Make Targets
 

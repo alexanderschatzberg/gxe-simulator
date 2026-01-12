@@ -255,14 +255,20 @@ log "Base directory: $BASE_DIR"
 mkdir -p "$BASE_DIR"
 
 # Track progress
-total_datasets=$((${#CONFIGS[@]} * ${#ENV_COUNTS[@]}))
 current=0
+total_datasets=7  # 3 small + 3 medium + 1 large (L10 only)
 
 # Loop through all configurations
 for label in "${!CONFIGS[@]}"; do
     read -r N SEQ_LENGTH <<< "${CONFIGS[$label]}"
 
     for L in "${ENV_COUNTS[@]}"; do
+        # Skip large datasets with L=1 or L=4 (too slow)
+        if [ "$label" = "large" ] && [ "$L" -lt 10 ]; then
+            log "Skipping ${label}_N${N}_L${L} (too slow for profiling)"
+            continue
+        fi
+
         current=$((current + 1))
 
         # Create dataset directory

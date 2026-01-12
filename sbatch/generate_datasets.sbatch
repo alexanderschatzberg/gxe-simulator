@@ -10,35 +10,33 @@
 #SBATCH --job-name=gen_gxe_data
 #SBATCH --output=logs/gen_data_%A_%a.out
 #SBATCH --error=logs/gen_data_%A_%a.err
-#SBATCH --array=0-8
+#SBATCH --array=0-6
 #SBATCH --export=ALL,UV_CACHE_DIR=/pscratch/sd/q/qys/uv-cache
 
 # ============================================================================
 # generate_datasets.sbatch
 #
-# SLURM array job to generate all 9 profiling datasets in parallel
+# SLURM array job to generate all 7 profiling datasets in parallel
 # Each array task generates one dataset configuration
+# Note: Skipping large_N200000_L1 and large_N200000_L4 (too slow)
 # ============================================================================
 
 mkdir -p logs
 
-# Dataset configurations
-# Format: "label N seq_length"
-declare -A SIZE_CONFIGS=(
-    [0]="small 5000 250000000"       # ~100k SNPs
-    [1]="medium 50000 1250000000"    # ~500k SNPs
-    [2]="large 200000 2500000000"    # ~1M SNPs
+# Explicit configuration mapping
+# Format: "label N seq_length L"
+declare -A CONFIGS=(
+    [0]="small 5000 250000000 1"
+    [1]="small 5000 250000000 4"
+    [2]="small 5000 250000000 10"
+    [3]="medium 50000 1250000000 1"
+    [4]="medium 50000 1250000000 4"
+    [5]="medium 50000 1250000000 10"
+    [6]="large 200000 2500000000 10"
 )
 
-ENV_COUNTS=(1 4 10)
-
-# Map array task ID to configuration
-# 9 total: 3 sizes × 3 L values
-SIZE_IDX=$((SLURM_ARRAY_TASK_ID / 3))
-L_IDX=$((SLURM_ARRAY_TASK_ID % 3))
-
-read -r LABEL N SEQ_LENGTH <<< "${SIZE_CONFIGS[$SIZE_IDX]}"
-L=${ENV_COUNTS[$L_IDX]}
+# Parse configuration for this task
+read -r LABEL N SEQ_LENGTH L <<< "${CONFIGS[$SLURM_ARRAY_TASK_ID]}"
 
 echo "=========================================="
 echo "Job ID: $SLURM_JOB_ID"
