@@ -10,13 +10,13 @@
 #SBATCH --job-name=gen_gxe_data
 #SBATCH --output=logs/gen_data_%A_%a.out
 #SBATCH --error=logs/gen_data_%A_%a.err
-#SBATCH --array=0-26
+#SBATCH --array=0-8
 #SBATCH --export=ALL,UV_CACHE_DIR=/pscratch/sd/q/qys/uv-cache
 
 # ============================================================================
 # generate_datasets.sbatch
 #
-# SLURM array job to generate all 27 profiling datasets in parallel
+# SLURM array job to generate all 9 profiling datasets in parallel
 # Each array task generates one dataset configuration
 # ============================================================================
 
@@ -33,10 +33,9 @@ declare -A SIZE_CONFIGS=(
 ENV_COUNTS=(1 4 10)
 
 # Map array task ID to configuration
-# 27 total: 3 sizes × 3 L values × 3 replicates
-SIZE_IDX=$((SLURM_ARRAY_TASK_ID / 9))
-L_IDX=$(((SLURM_ARRAY_TASK_ID % 9) / 3))
-REP=$((SLURM_ARRAY_TASK_ID % 3))
+# 9 total: 3 sizes × 3 L values
+SIZE_IDX=$((SLURM_ARRAY_TASK_ID / 3))
+L_IDX=$((SLURM_ARRAY_TASK_ID % 3))
 
 read -r LABEL N SEQ_LENGTH <<< "${SIZE_CONFIGS[$SIZE_IDX]}"
 L=${ENV_COUNTS[$L_IDX]}
@@ -45,8 +44,8 @@ echo "=========================================="
 echo "Job ID: $SLURM_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
 echo "Running on node: $(hostname)"
-echo "Configuration: ${LABEL}_N${N}_L${L}_rep${REP}"
-echo "Parameters: N=$N, SEQ_LENGTH=$SEQ_LENGTH, L=$L, REP=$REP"
+echo "Configuration: ${LABEL}_N${N}_L${L}"
+echo "Parameters: N=$N, SEQ_LENGTH=$SEQ_LENGTH, L=$L"
 echo "Job started at $(date), timestamp $(date +%s)"
 echo "=========================================="
 
@@ -62,7 +61,7 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 # Run generation
-./generate_single_dataset.sh "$LABEL" "$N" "$SEQ_LENGTH" "$L" "$REP"
+./generate_single_dataset.sh "$LABEL" "$N" "$SEQ_LENGTH" "$L"
 
 echo "=========================================="
 echo "Job completed at $(date), timestamp $(date +%s)"

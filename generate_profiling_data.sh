@@ -30,7 +30,6 @@ declare -A CONFIGS=(
 )
 
 ENV_COUNTS=(1 4 10)
-REPLICATES=(0 1 2)
 
 # ============================================================================
 # Helper Functions
@@ -256,7 +255,7 @@ log "Base directory: $BASE_DIR"
 mkdir -p "$BASE_DIR"
 
 # Track progress
-total_datasets=$((${#CONFIGS[@]} * ${#ENV_COUNTS[@]} * ${#REPLICATES[@]}))
+total_datasets=$((${#CONFIGS[@]} * ${#ENV_COUNTS[@]}))
 current=0
 
 # Loop through all configurations
@@ -264,17 +263,16 @@ for label in "${!CONFIGS[@]}"; do
     read -r N SEQ_LENGTH <<< "${CONFIGS[$label]}"
 
     for L in "${ENV_COUNTS[@]}"; do
-        for rep in "${REPLICATES[@]}"; do
-            current=$((current + 1))
+        current=$((current + 1))
 
-            # Create dataset directory
-            dataset_dir="${BASE_DIR}/${label}_N${N}_L${L}_rep${rep}"
-            log "[$current/$total_datasets] Generating: $dataset_dir"
+        # Create dataset directory
+        dataset_dir="${BASE_DIR}/${label}_N${N}_L${L}"
+        log "[$current/$total_datasets] Generating: $dataset_dir"
 
-            mkdir -p "$dataset_dir"
+        mkdir -p "$dataset_dir"
 
-            # Set seed based on configuration (ensures reproducibility)
-            seed=$((1000 * N + 100 * L + 10 * rep + 42))
+        # Set seed based on configuration (ensures reproducibility)
+        seed=$((1000 * N + 100 * L + 42))
 
             # Step 1: Generate VCF
             vcf_file="${dataset_dir}/genotype.vcf"
@@ -319,9 +317,8 @@ for label in "${!CONFIGS[@]}"; do
             # Optional: Clean up intermediate VCF to save space
             # rm -f "$vcf_file"
 
-            log "Completed: $dataset_dir"
-            echo ""
-        done
+        log "Completed: $dataset_dir"
+        echo ""
     done
 done
 
@@ -337,4 +334,4 @@ tree -L 2 "$BASE_DIR" 2>/dev/null || find "$BASE_DIR" -maxdepth 2 -type d
 
 log ""
 log "To verify a dataset:"
-log "  ls -lh $BASE_DIR/small_N5000_L1_rep0/"
+log "  ls -lh $BASE_DIR/small_N5000_L1/"

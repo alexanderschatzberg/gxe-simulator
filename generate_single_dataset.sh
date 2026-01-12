@@ -8,12 +8,12 @@ set -u  # Exit on undefined variable
 # Generates a single GxE profiling dataset
 # Designed to be called from SLURM array job
 #
-# Usage: ./generate_single_dataset.sh <label> <N> <seq_length> <L> <rep>
+# Usage: ./generate_single_dataset.sh <label> <N> <seq_length> <L>
 # ============================================================================
 
-if [ $# -ne 5 ]; then
-    echo "Usage: $0 <label> <N> <seq_length> <L> <rep>"
-    echo "Example: $0 small 5000 250000000 1 0"
+if [ $# -ne 4 ]; then
+    echo "Usage: $0 <label> <N> <seq_length> <L>"
+    echo "Example: $0 small 5000 250000000 1"
     exit 1
 fi
 
@@ -21,7 +21,6 @@ LABEL=$1
 N=$2
 SEQ_LENGTH=$3
 L=$4
-REP=$5
 
 # Configuration
 BASE_DIR="sim_data"
@@ -248,13 +247,13 @@ EOF
 # ============================================================================
 
 # Create dataset directory
-dataset_dir="${BASE_DIR}/${LABEL}_N${N}_L${L}_rep${REP}"
+dataset_dir="${BASE_DIR}/${LABEL}_N${N}_L${L}"
 log "Generating: $dataset_dir"
 
 mkdir -p "$dataset_dir"
 
 # Set seed based on configuration (ensures reproducibility)
-seed=$((1000 * N + 100 * L + 10 * REP + 42))
+seed=$((1000 * N + 100 * L + 42))
 
 # Step 1: Generate VCF
 vcf_file="${dataset_dir}/genotype.vcf"

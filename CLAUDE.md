@@ -17,6 +17,54 @@ The project uses `uv` for Python package management with Python 3.14:
 uv run python scripts/simulate_genotype.py --n_individuals 1000 --seq_length 1000000 --recomb_rate 1e-7 --vcf_path /path/to/output.vcf
 ```
 
+### Generate Profiling Datasets
+
+Generate standardized datasets for profiling with varying N (individuals), M (SNPs), and L (environmental factors):
+
+**On Perlmutter (recommended for large datasets):**
+```bash
+# Submit SLURM array job to generate all 9 datasets in parallel
+./submit_dataset_generation.sh
+
+# Monitor progress
+squeue -u $USER
+tail -f logs/gen_data_*.out
+
+# Check completion status
+sacct -j <JOB_ID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS
+```
+
+**On local machine:**
+```bash
+# Generate all profiling datasets (9 total, runs serially)
+./generate_profiling_data.sh
+
+# Or generate a single dataset
+./generate_single_dataset.sh small 5000 250000000 1
+```
+
+This creates datasets in `sim_data/` with structure: `sim_data/{label}_N{N}_L{L}/`
+
+Dataset sizes:
+- **small**: N=5,000, ~100k SNPs (seq_length=250M)
+- **medium**: N=50,000, ~500k SNPs (seq_length=1.25G)
+- **large**: N=200,000, ~1M SNPs (seq_length=2.5G)
+
+Environmental factors (L): 1, 4, or 10
+
+Each dataset contains:
+- `genotypes.bed/bim/fam` - PLINK binary format (MAF > 0.05)
+- `phenotype.csv` - Simulated phenotype (header: y)
+- `environment.csv` - Environmental factors (header: E1,E2,...,EL)
+- `covariates.csv` - Covariates (header: C1,C2,C3)
+
+**SLURM array job details:**
+- Runs 9 tasks in parallel (array=0-8)
+- Each task: 1 node, 16 CPUs, 64GB RAM, 24h time limit
+- Uses UV_CACHE_DIR for shared uv package cache
+- VCF files deleted after conversion to save space
+- Task mapping: tasks 0-2 (small, L=1/4/10), 3-5 (medium, L=1/4/10), 6-8 (large, L=1/4/10)
+
 ### Make Targets
 
 All scripts should be run from the project root directory. The Makefile orchestrates the entire simulation and profiling pipeline:
