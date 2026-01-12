@@ -1,0 +1,17 @@
+[project]
+name = "gxe"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "msprime>=1.3.4",
+    "numpy>=2.3.3",
+    "pandas>=2.3.3",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.14"
+pythonPlatform = "Linux"
