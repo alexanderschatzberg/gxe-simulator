@@ -52,8 +52,14 @@ echo "=========================================="
 cd $SLURM_SUBMIT_DIR
 
 # Set up UV cache directory (use your own scratch space)
+# Unset any existing UV environment variables that might point to old paths
+unset UV_CACHE_DIR
+unset UV_TOOL_DIR
+unset UV_PYTHON_INSTALL_DIR
 export UV_CACHE_DIR=$SLURM_SUBMIT_DIR/.uv-cache
 mkdir -p $UV_CACHE_DIR
+echo "UV_CACHE_DIR set to: $UV_CACHE_DIR"
+echo "Working directory: $(pwd)"
 
 # Ensure script is executable
 chmod +x generate_single_dataset.sh
