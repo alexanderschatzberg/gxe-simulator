@@ -58,10 +58,11 @@ Each dataset contains:
 
 **SLURM array job details:**
 - Runs 7 tasks in parallel (array=0-6)
-- Each task: 1 node, 16 CPUs, 64GB RAM, 24h time limit
+- Each task: 1 node, 16 CPUs, 128GB RAM, 48h time limit
 - Uses UV_CACHE_DIR for shared uv package cache
 - VCF files deleted after conversion to save space
 - Task mapping: 0-2 (small L=1/4/10), 3-5 (medium L=1/4/10), 6 (large L=10)
+- Resources increased to handle large_N200000_L10 dataset (small/medium will use less)
 
 ### Make Targets
 

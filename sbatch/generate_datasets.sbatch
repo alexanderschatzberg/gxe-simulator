@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --account=m4646
+#SBATCH --account=m4341
 #SBATCH --qos=regular
 #SBATCH --constraint=cpu
 #SBATCH --nodes=1
