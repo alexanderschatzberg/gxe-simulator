@@ -11,7 +11,6 @@
 #SBATCH --output=logs/gen_data_%A_%a.out
 #SBATCH --error=logs/gen_data_%A_%a.err
 #SBATCH --array=0-6
-#SBATCH --export=ALL,UV_CACHE_DIR=/pscratch/sd/q/qys/uv-cache
 
 # ============================================================================
 # generate_datasets.sbatch
@@ -49,6 +48,10 @@ echo "=========================================="
 
 # Navigate to submission directory
 cd $SLURM_SUBMIT_DIR
+
+# Set up UV cache directory (use your own scratch space)
+export UV_CACHE_DIR=$SLURM_SUBMIT_DIR/.uv-cache
+mkdir -p $UV_CACHE_DIR
 
 # Ensure script is executable
 chmod +x generate_single_dataset.sh

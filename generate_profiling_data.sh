@@ -23,11 +23,9 @@ MUTATION_RATE="1e-8"
 # Dataset configurations
 # Format: "label N seq_length"
 # seq_length chosen to yield approximately target SNP counts after MAF filtering
-declare -A CONFIGS=(
-    ["small"]="5000 250000000"      # ~100k SNPs
-    ["medium"]="50000 1250000000"   # ~500k SNPs
-    ["large"]="200000 2500000000"   # ~1M SNPs
-)
+declare -a LABELS=("small" "medium" "large")
+declare -a N_VALUES=(5000 50000 200000)
+declare -a SEQ_LENGTHS=(250000000 1250000000 2500000000)
 
 ENV_COUNTS=(1 4 10)
 
@@ -101,8 +99,16 @@ vcf_to_plink() {
 
     # Check if plink exists, download if not
     if [ ! -f "./plink" ]; then
-        log "Downloading PLINK..."
-        make plink
+        log "Downloading PLINK for $(uname)..."
+        if [[ "$(uname)" == "Darwin" ]]; then
+            curl -o /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_mac_20250819.zip
+            unzip -p /tmp/plink.zip plink > ./plink
+            chmod a+x ./plink
+        else
+            curl -o /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20250819.zip
+            unzip -p /tmp/plink.zip plink > ./plink
+            chmod a+x ./plink
+        fi
     fi
 
     ./plink --vcf "$vcf_path" --maf 0.05 --make-bed --out "$output_prefix" --allow-extra-chr
@@ -259,8 +265,10 @@ current=0
 total_datasets=7  # 3 small + 3 medium + 1 large (L10 only)
 
 # Loop through all configurations
-for label in "${!CONFIGS[@]}"; do
-    read -r N SEQ_LENGTH <<< "${CONFIGS[$label]}"
+for i in "${!LABELS[@]}"; do
+    label="${LABELS[$i]}"
+    N="${N_VALUES[$i]}"
+    SEQ_LENGTH="${SEQ_LENGTHS[$i]}"
 
     for L in "${ENV_COUNTS[@]}"; do
         # Skip large datasets with L=1 or L=4 (too slow)

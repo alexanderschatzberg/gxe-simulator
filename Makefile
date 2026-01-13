@@ -37,9 +37,15 @@ all: $(DATA_DIR)/profiling/genie_1.svg \
 	$(DATA_DIR)/profiling/out_64.folded \
 
 plink:
+ifeq ($(shell uname),Darwin)
+	curl -o /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_mac_20250819.zip
+	unzip -p /tmp/plink.zip plink > ./plink
+	chmod a+x ./plink
+else
 	curl -o /tmp/plink.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20250819.zip
 	unzip -p /tmp/plink.zip plink > ./plink
 	chmod a+x ./plink
+endif
 
 plink2:
 	curl -o /tmp/plink2.zip https://s3.amazonaws.com/plink2-assets/plink2_linux_amd_avx2_20251122.zip

@@ -2,6 +2,10 @@
 set -e  # Exit on error
 set -u  # Exit on undefined variable
 
+# Set default values for SLURM variables if not running under SLURM
+: ${SLURM_JOB_ID:=$$}
+: ${SLURM_ARRAY_TASK_ID:=0}
+
 # ============================================================================
 # generate_single_dataset.sh
 #
@@ -96,11 +100,18 @@ vcf_to_plink() {
 
     # Check if plink exists, download if not
     if [ ! -f "./plink" ]; then
-        log "Downloading PLINK..."
-        curl -o /tmp/plink_${SLURM_JOB_ID}.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20250819.zip
-        unzip -p /tmp/plink_${SLURM_JOB_ID}.zip plink > ./plink
-        chmod a+x ./plink
-        rm /tmp/plink_${SLURM_JOB_ID}.zip
+        log "Downloading PLINK for $(uname)..."
+        if [[ "$(uname)" == "Darwin" ]]; then
+            curl -o /tmp/plink_${SLURM_JOB_ID:-$$}.zip https://s3.amazonaws.com/plink1-assets/plink_mac_20250819.zip
+            unzip -p /tmp/plink_${SLURM_JOB_ID:-$$}.zip plink > ./plink
+            chmod a+x ./plink
+            rm /tmp/plink_${SLURM_JOB_ID:-$$}.zip
+        else
+            curl -o /tmp/plink_${SLURM_JOB_ID:-$$}.zip https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20250819.zip
+            unzip -p /tmp/plink_${SLURM_JOB_ID:-$$}.zip plink > ./plink
+            chmod a+x ./plink
+            rm /tmp/plink_${SLURM_JOB_ID:-$$}.zip
+        fi
     fi
 
     ./plink --vcf "$vcf_path" --maf 0.05 --make-bed --out "$output_prefix" --allow-extra-chr
