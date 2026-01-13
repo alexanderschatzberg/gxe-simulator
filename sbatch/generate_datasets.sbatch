@@ -5,8 +5,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
-#SBATCH --time=24:00:00
+#SBATCH --mem=128G
+#SBATCH --time=48:00:00
 #SBATCH --job-name=gen_gxe_data
 #SBATCH --output=logs/gen_data_%A_%a.out
 #SBATCH --error=logs/gen_data_%A_%a.err
@@ -18,6 +18,8 @@
 # SLURM array job to generate all 7 profiling datasets in parallel
 # Each array task generates one dataset configuration
 # Note: Skipping large_N200000_L1 and large_N200000_L4 (too slow)
+# Resources increased to 128GB/48h to accommodate large dataset
+# Small/medium datasets will use less but this ensures large succeeds
 # ============================================================================
 
 mkdir -p logs
