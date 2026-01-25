@@ -1,0 +1,33 @@
+PLINK v1.9.0-b.7.11 64-bit (19 Aug 2025)
+Options in effect:
+  --allow-extra-chr
+  --maf 0.05
+  --make-bed
+  --out sim_data/n100_N100_L1/genotypes
+  --vcf sim_data/n100_N100_L1/genotype.vcf
+
+Hostname: dhcp-vl2041-17222.eduroam.cornell.edu
+Working directory: /Users/alexander/Desktop/cornell/GxE/simulator
+Start time: Sun Jan 25 16:05:24 2026
+
+Random number seed: 1769375124
+16384 MB RAM detected; reserving 8192 MB for main workspace.
+--vcf: sim_data/n100_N100_L1/genotypes-temporary.bed +
+sim_data/n100_N100_L1/genotypes-temporary.bim +
+sim_data/n100_N100_L1/genotypes-temporary.fam written.
+2414 variants loaded from .bim file.
+100 people (0 males, 0 females, 100 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to sim_data/n100_N100_L1/genotypes.nosex .
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 100 founders and 0 nonfounders present.
+Calculating allele frequencies... done.
+Total genotyping rate is 0.999805.
+1116 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+1298 variants and 100 people pass filters and QC.
+Note: No phenotypes present.
+--make-bed to sim_data/n100_N100_L1/genotypes.bed +
+sim_data/n100_N100_L1/genotypes.bim + sim_data/n100_N100_L1/genotypes.fam ...
+done.
+
+End time: Sun Jan 25 16:05:24 2026
