@@ -37,3 +37,11 @@ data/demo/*.vcf
 gmon.out
 logs/*
 palette.map
+
+# Allow sim_data files (tracked with LFS)
+!sim_data/**/*.bed
+!sim_data/**/*.bim
+!sim_data/**/*.fam
+!sim_data/**/*.vcf
+!sim_data/**/*.log
+!sim_data/**/*.nosex
