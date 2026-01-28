@@ -45,12 +45,13 @@ sacct -j <JOB_ID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS
 
 This creates datasets in `sim_data/` with structure: `sim_data/{label}_N{N}_L{L}/`
 
-Dataset sizes (9 total):
-- **small**: N=5,000, M~100k SNPs (seq_length=250M), L=1/4/10 (3 datasets)
-- **medium**: N=50,000, M~500k SNPs (seq_length=1.25G), L=1/4/10 (3 datasets)
-- **large_M100k**: N=200,000, M~100k SNPs (seq_length=250M), L=10 (1 dataset)
-- **large_M500k**: N=200,000, M~500k SNPs (seq_length=1.25G), L=10 (1 dataset)
-- **large_M1M**: N=200,000, M~1M SNPs (seq_length=2.5G), L=10 (1 dataset)
+Dataset sizes (3 total, each varies N, M, and L together):
+
+| Label | N (individuals) | M (SNPs) | L (env factors) | seq_length |
+|-------|-----------------|----------|-----------------|------------|
+| small | 5,000 | ~100k | 1 | 250M |
+| medium | 50,000 | ~500k | 4 | 1.25G |
+| large | 200,000 | ~1M | 10 | 2.5G |
 
 Each dataset contains:
 - `genotypes.bed/bim/fam` - PLINK binary format (MAF > 0.05)
@@ -59,12 +60,12 @@ Each dataset contains:
 - `covariates.csv` - Covariates (header: C1,C2,C3)
 
 **SLURM array job details:**
-- Runs 9 tasks in parallel (array=0-8)
+- Runs 3 tasks in parallel (array=0-2)
 - Each task: 1 node, 16 CPUs, 128GB RAM, 48h time limit
-- Uses UV_CACHE_DIR for shared uv package cache
+- UV cache: uses `$SCRATCH/uv-cache` to avoid permission issues on Perlmutter
 - VCF files deleted after conversion to save space
-- Task mapping: 0-2 (small L=1/4/10), 3-5 (medium L=1/4/10), 6-8 (large M=100k/500k/1M)
-- Resources increased to handle large datasets (small/medium will use less)
+- Task mapping: 0 (small), 1 (medium), 2 (large)
+- Resources sized for large dataset (small/medium will use less)
 
 ### Make Targets
 

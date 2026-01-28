@@ -5,11 +5,10 @@ set -u  # Exit on undefined variable
 # ============================================================================
 # generate_profiling_data.sh
 #
-# Generates GxE profiling datasets with varying:
-#   - small/medium: N=5k/50k, fixed M, vary L (1, 4, 10)
-#   - large: N=200k, vary M (100k, 500k, 1M SNPs), fixed L=10
-#
-# Total: 9 datasets
+# Generates 3 GxE profiling datasets where each varies N, M, and L together:
+#   - small:  N=5k,   M~100k, L=1
+#   - medium: N=50k,  M~500k, L=4
+#   - large:  N=200k, M~1M,   L=10
 # ============================================================================
 
 # Check for required tools
@@ -21,20 +20,12 @@ RECOMB_RATE="1e-7"
 MUTATION_RATE="1e-8"
 
 # Dataset configurations
-# seq_length chosen to yield approximately target SNP counts after MAF filtering:
-#   250M → ~100k SNPs, 1.25G → ~500k SNPs, 2.5G → ~1M SNPs
-
-# Small/medium: fixed M, vary L
-declare -a SM_LABELS=("small" "medium")
-declare -a SM_N_VALUES=(5000 50000)
-declare -a SM_SEQ_LENGTHS=(250000000 1250000000)
-ENV_COUNTS=(1 4 10)
-
-# Large: fixed N=200k and L=10, vary M
-declare -a LARGE_LABELS=("large_M100k" "large_M500k" "large_M1M")
-declare -a LARGE_SEQ_LENGTHS=(250000000 1250000000 2500000000)
-LARGE_N=200000
-LARGE_L=10
+# Each dataset varies N, M, and L together
+# seq_length determines M: 250M→~100k, 1.25G→~500k, 2.5G→~1M SNPs
+declare -a LABELS=("small" "medium" "large")
+declare -a N_VALUES=(5000 50000 200000)
+declare -a SEQ_LENGTHS=(250000000 1250000000 2500000000)
+declare -a L_VALUES=(1 4 10)
 
 # ============================================================================
 # Helper Functions
@@ -268,26 +259,23 @@ log "Base directory: $BASE_DIR"
 mkdir -p "$BASE_DIR"
 
 # Track progress
-current=0
-total_datasets=9  # 3 small + 3 medium + 3 large
+total_datasets=3
 
-# Helper function to generate a single dataset
-generate_dataset() {
-    local label=$1
-    local N=$2
-    local SEQ_LENGTH=$3
-    local L=$4
-
-    current=$((current + 1))
+# Loop through all configurations
+for i in "${!LABELS[@]}"; do
+    label="${LABELS[$i]}"
+    N="${N_VALUES[$i]}"
+    SEQ_LENGTH="${SEQ_LENGTHS[$i]}"
+    L="${L_VALUES[$i]}"
 
     # Create dataset directory
     dataset_dir="${BASE_DIR}/${label}_N${N}_L${L}"
-    log "[$current/$total_datasets] Generating: $dataset_dir"
+    log "[$((i + 1))/$total_datasets] Generating: $dataset_dir"
 
     mkdir -p "$dataset_dir"
 
     # Set seed based on configuration (ensures reproducibility)
-    seed=$((1000 * N + 100 * L + SEQ_LENGTH / 1000000 + 42))
+    seed=$((1000 * N + 100 * L + 42))
 
     # Step 1: Generate VCF
     vcf_file="${dataset_dir}/genotype.vcf"
@@ -334,24 +322,6 @@ generate_dataset() {
 
     log "Completed: $dataset_dir"
     echo ""
-}
-
-# Generate small/medium datasets (vary L)
-for i in "${!SM_LABELS[@]}"; do
-    label="${SM_LABELS[$i]}"
-    N="${SM_N_VALUES[$i]}"
-    SEQ_LENGTH="${SM_SEQ_LENGTHS[$i]}"
-
-    for L in "${ENV_COUNTS[@]}"; do
-        generate_dataset "$label" "$N" "$SEQ_LENGTH" "$L"
-    done
-done
-
-# Generate large datasets (vary M via seq_length, fixed L=10)
-for i in "${!LARGE_LABELS[@]}"; do
-    label="${LARGE_LABELS[$i]}"
-    SEQ_LENGTH="${LARGE_SEQ_LENGTHS[$i]}"
-    generate_dataset "$label" "$LARGE_N" "$SEQ_LENGTH" "$LARGE_L"
 done
 
 # ============================================================================
@@ -359,7 +329,7 @@ done
 # ============================================================================
 
 log "Dataset generation complete!"
-log "Generated 9 datasets in $BASE_DIR/"
+log "Generated 3 datasets in $BASE_DIR/"
 log ""
 log "Directory structure:"
 tree -L 2 "$BASE_DIR" 2>/dev/null || find "$BASE_DIR" -maxdepth 2 -type d
