@@ -6,10 +6,10 @@ set -u  # Exit on undefined variable
 # generate_profiling_data.sh
 #
 # Generates GxE profiling datasets with varying:
-#   - N (individuals): 5,000 | 50,000 | 200,000
-#   - M (SNPs): ~100k | ~500k | ~1M
-#   - L (environmental factors): 1 | 4 | 10
-#   - Replicates: 0, 1, 2
+#   - small/medium: N=5k/50k, fixed M, vary L (1, 4, 10)
+#   - large: N=200k, vary M (100k, 500k, 1M SNPs), fixed L=10
+#
+# Total: 9 datasets
 # ============================================================================
 
 # Check for required tools
@@ -21,13 +21,20 @@ RECOMB_RATE="1e-7"
 MUTATION_RATE="1e-8"
 
 # Dataset configurations
-# Format: "label N seq_length"
-# seq_length chosen to yield approximately target SNP counts after MAF filtering
-declare -a LABELS=("small" "medium" "large")
-declare -a N_VALUES=(5000 50000 200000)
-declare -a SEQ_LENGTHS=(250000000 1250000000 2500000000)
+# seq_length chosen to yield approximately target SNP counts after MAF filtering:
+#   250M → ~100k SNPs, 1.25G → ~500k SNPs, 2.5G → ~1M SNPs
 
+# Small/medium: fixed M, vary L
+declare -a SM_LABELS=("small" "medium")
+declare -a SM_N_VALUES=(5000 50000)
+declare -a SM_SEQ_LENGTHS=(250000000 1250000000)
 ENV_COUNTS=(1 4 10)
+
+# Large: fixed N=200k and L=10, vary M
+declare -a LARGE_LABELS=("large_M100k" "large_M500k" "large_M1M")
+declare -a LARGE_SEQ_LENGTHS=(250000000 1250000000 2500000000)
+LARGE_N=200000
+LARGE_L=10
 
 # ============================================================================
 # Helper Functions
@@ -262,78 +269,89 @@ mkdir -p "$BASE_DIR"
 
 # Track progress
 current=0
-total_datasets=7  # 3 small + 3 medium + 1 large (L10 only)
+total_datasets=9  # 3 small + 3 medium + 3 large
 
-# Loop through all configurations
-for i in "${!LABELS[@]}"; do
-    label="${LABELS[$i]}"
-    N="${N_VALUES[$i]}"
-    SEQ_LENGTH="${SEQ_LENGTHS[$i]}"
+# Helper function to generate a single dataset
+generate_dataset() {
+    local label=$1
+    local N=$2
+    local SEQ_LENGTH=$3
+    local L=$4
+
+    current=$((current + 1))
+
+    # Create dataset directory
+    dataset_dir="${BASE_DIR}/${label}_N${N}_L${L}"
+    log "[$current/$total_datasets] Generating: $dataset_dir"
+
+    mkdir -p "$dataset_dir"
+
+    # Set seed based on configuration (ensures reproducibility)
+    seed=$((1000 * N + 100 * L + SEQ_LENGTH / 1000000 + 42))
+
+    # Step 1: Generate VCF
+    vcf_file="${dataset_dir}/genotype.vcf"
+    if [ ! -f "$vcf_file" ]; then
+        generate_vcf "$N" "$SEQ_LENGTH" "$seed" "$vcf_file"
+    else
+        log "VCF already exists, skipping"
+    fi
+
+    # Step 2: Convert to PLINK format
+    bed_file="${dataset_dir}/genotypes.bed"
+    if [ ! -f "$bed_file" ]; then
+        vcf_to_plink "$vcf_file" "${dataset_dir}/genotypes"
+    else
+        log "PLINK files already exist, skipping"
+    fi
+
+    # Step 3: Generate environment
+    env_file="${dataset_dir}/environment.csv"
+    if [ ! -f "$env_file" ]; then
+        generate_environment "$N" "$L" "$((seed + 1000))" "$env_file"
+    else
+        log "Environment file already exists, skipping"
+    fi
+
+    # Step 4: Generate covariates
+    cov_file="${dataset_dir}/covariates.csv"
+    if [ ! -f "$cov_file" ]; then
+        generate_covariates "$N" "$((seed + 2000))" "$cov_file"
+    else
+        log "Covariates file already exists, skipping"
+    fi
+
+    # Step 5: Generate phenotype
+    pheno_file="${dataset_dir}/phenotype.csv"
+    if [ ! -f "$pheno_file" ]; then
+        generate_phenotype "$bed_file" "$env_file" "$((seed + 3000))" "$pheno_file"
+    else
+        log "Phenotype file already exists, skipping"
+    fi
+
+    # Optional: Clean up intermediate VCF to save space
+    # rm -f "$vcf_file"
+
+    log "Completed: $dataset_dir"
+    echo ""
+}
+
+# Generate small/medium datasets (vary L)
+for i in "${!SM_LABELS[@]}"; do
+    label="${SM_LABELS[$i]}"
+    N="${SM_N_VALUES[$i]}"
+    SEQ_LENGTH="${SM_SEQ_LENGTHS[$i]}"
 
     for L in "${ENV_COUNTS[@]}"; do
-        # Skip large datasets with L=1 or L=4 (too slow)
-        if [ "$label" = "large" ] && [ "$L" -lt 10 ]; then
-            log "Skipping ${label}_N${N}_L${L} (too slow for profiling)"
-            continue
-        fi
-
-        current=$((current + 1))
-
-        # Create dataset directory
-        dataset_dir="${BASE_DIR}/${label}_N${N}_L${L}"
-        log "[$current/$total_datasets] Generating: $dataset_dir"
-
-        mkdir -p "$dataset_dir"
-
-        # Set seed based on configuration (ensures reproducibility)
-        seed=$((1000 * N + 100 * L + 42))
-
-            # Step 1: Generate VCF
-            vcf_file="${dataset_dir}/genotype.vcf"
-            if [ ! -f "$vcf_file" ]; then
-                generate_vcf "$N" "$SEQ_LENGTH" "$seed" "$vcf_file"
-            else
-                log "VCF already exists, skipping"
-            fi
-
-            # Step 2: Convert to PLINK format
-            bed_file="${dataset_dir}/genotypes.bed"
-            if [ ! -f "$bed_file" ]; then
-                vcf_to_plink "$vcf_file" "${dataset_dir}/genotypes"
-            else
-                log "PLINK files already exist, skipping"
-            fi
-
-            # Step 3: Generate environment
-            env_file="${dataset_dir}/environment.csv"
-            if [ ! -f "$env_file" ]; then
-                generate_environment "$N" "$L" "$((seed + 1000))" "$env_file"
-            else
-                log "Environment file already exists, skipping"
-            fi
-
-            # Step 4: Generate covariates
-            cov_file="${dataset_dir}/covariates.csv"
-            if [ ! -f "$cov_file" ]; then
-                generate_covariates "$N" "$((seed + 2000))" "$cov_file"
-            else
-                log "Covariates file already exists, skipping"
-            fi
-
-            # Step 5: Generate phenotype
-            pheno_file="${dataset_dir}/phenotype.csv"
-            if [ ! -f "$pheno_file" ]; then
-                generate_phenotype "$bed_file" "$env_file" "$((seed + 3000))" "$pheno_file"
-            else
-                log "Phenotype file already exists, skipping"
-            fi
-
-            # Optional: Clean up intermediate VCF to save space
-            # rm -f "$vcf_file"
-
-        log "Completed: $dataset_dir"
-        echo ""
+        generate_dataset "$label" "$N" "$SEQ_LENGTH" "$L"
     done
+done
+
+# Generate large datasets (vary M via seq_length, fixed L=10)
+for i in "${!LARGE_LABELS[@]}"; do
+    label="${LARGE_LABELS[$i]}"
+    SEQ_LENGTH="${LARGE_SEQ_LENGTHS[$i]}"
+    generate_dataset "$label" "$LARGE_N" "$SEQ_LENGTH" "$LARGE_L"
 done
 
 # ============================================================================
@@ -341,7 +359,7 @@ done
 # ============================================================================
 
 log "Dataset generation complete!"
-log "Generated $total_datasets datasets in $BASE_DIR/"
+log "Generated 9 datasets in $BASE_DIR/"
 log ""
 log "Directory structure:"
 tree -L 2 "$BASE_DIR" 2>/dev/null || find "$BASE_DIR" -maxdepth 2 -type d

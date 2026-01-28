@@ -10,14 +10,18 @@
 #SBATCH --job-name=gen_gxe_data
 #SBATCH --output=logs/gen_data_%A_%a.out
 #SBATCH --error=logs/gen_data_%A_%a.err
-#SBATCH --array=0-6
+#SBATCH --array=0-8
 
 # ============================================================================
 # generate_datasets.sbatch
 #
-# SLURM array job to generate all 7 profiling datasets in parallel
+# SLURM array job to generate all 9 profiling datasets in parallel
 # Each array task generates one dataset configuration
-# Note: Skipping large_N200000_L1 and large_N200000_L4 (too slow)
+#
+# Dataset matrix:
+#   - small/medium: vary L (1, 4, 10) with fixed M (~100k/~500k SNPs)
+#   - large: vary M (100k, 500k, 1M SNPs) with fixed L=10
+#
 # Resources increased to 128GB/48h to accommodate large dataset
 # Small/medium datasets will use less but this ensures large succeeds
 # ============================================================================
@@ -26,6 +30,7 @@ mkdir -p logs
 
 # Explicit configuration mapping
 # Format: "label N seq_length L"
+# seq_length determines M: 250M→~100k, 1.25G→~500k, 2.5G→~1M SNPs
 declare -A CONFIGS=(
     [0]="small 5000 250000000 1"
     [1]="small 5000 250000000 4"
@@ -33,7 +38,9 @@ declare -A CONFIGS=(
     [3]="medium 50000 1250000000 1"
     [4]="medium 50000 1250000000 4"
     [5]="medium 50000 1250000000 10"
-    [6]="large 200000 2500000000 10"
+    [6]="large_M100k 200000 250000000 10"
+    [7]="large_M500k 200000 1250000000 10"
+    [8]="large_M1M 200000 2500000000 10"
 )
 
 # Parse configuration for this task
@@ -51,13 +58,9 @@ echo "=========================================="
 # Navigate to submission directory
 cd $SLURM_SUBMIT_DIR
 
-# Set up UV cache directory (use your own scratch space)
-# Unset any existing UV environment variables that might point to old paths
-unset UV_CACHE_DIR
-unset UV_TOOL_DIR
-unset UV_PYTHON_INSTALL_DIR
-export UV_CACHE_DIR=$SLURM_SUBMIT_DIR/.uv-cache
-mkdir -p $UV_CACHE_DIR
+# Set up UV cache directory in scratch space (avoids permission issues)
+mkdir -p $SCRATCH/uv-cache
+export UV_CACHE_DIR=$SCRATCH/uv-cache
 echo "UV_CACHE_DIR set to: $UV_CACHE_DIR"
 echo "Working directory: $(pwd)"
 
