@@ -9,6 +9,10 @@ set -u  # Exit on undefined variable
 #   - small:  N=5k,   M~100k, L=1
 #   - medium: N=50k,  M~500k, L=4
 #   - large:  N=200k, M~1M,   L=10
+#
+# Optimizations vs original:
+#   - Direct PLINK BED output from msprime (bypasses multi-GB VCF intermediate)
+#   - Environment and covariates generated in parallel per dataset
 # ============================================================================
 
 # Check for required tools
@@ -35,7 +39,24 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
-# Generate VCF using msprime
+# Generate PLINK files directly from msprime (no VCF intermediate)
+generate_plink_direct() {
+    local n_individuals=$1
+    local seq_length=$2
+    local recomb_rate=$3
+    local output_prefix=$4
+
+    log "Generating genotypes directly to PLINK: N=$n_individuals, seq_length=$seq_length"
+
+    uv run python scripts/simulate_genotype.py \
+        --n_individuals "$n_individuals" \
+        --seq_length "$seq_length" \
+        --recomb_rate "$recomb_rate" \
+        --plink_prefix "$output_prefix" \
+        --maf_filter 0.05
+}
+
+# Legacy: Generate VCF using msprime (kept for compatibility)
 generate_vcf() {
     local n_individuals=$1
     local seq_length=$2
@@ -277,48 +298,46 @@ for i in "${!LABELS[@]}"; do
     # Set seed based on configuration (ensures reproducibility)
     seed=$((1000 * N + 100 * L + 42))
 
-    # Step 1: Generate VCF
-    vcf_file="${dataset_dir}/genotype.vcf"
-    if [ ! -f "$vcf_file" ]; then
-        generate_vcf "$N" "$SEQ_LENGTH" "$seed" "$vcf_file"
-    else
-        log "VCF already exists, skipping"
-    fi
-
-    # Step 2: Convert to PLINK format
+    # Step 1: Generate PLINK files directly (bypasses VCF intermediate)
     bed_file="${dataset_dir}/genotypes.bed"
     if [ ! -f "$bed_file" ]; then
-        vcf_to_plink "$vcf_file" "${dataset_dir}/genotypes"
+        generate_plink_direct "$N" "$SEQ_LENGTH" "$RECOMB_RATE" "${dataset_dir}/genotypes"
     else
         log "PLINK files already exist, skipping"
     fi
 
-    # Step 3: Generate environment
+    # Steps 2-3: Generate environment and covariates IN PARALLEL
     env_file="${dataset_dir}/environment.csv"
+    cov_file="${dataset_dir}/covariates.csv"
+
+    pids=()
+
     if [ ! -f "$env_file" ]; then
-        generate_environment "$N" "$L" "$((seed + 1000))" "$env_file"
+        generate_environment "$N" "$L" "$((seed + 1000))" "$env_file" &
+        pids+=($!)
     else
         log "Environment file already exists, skipping"
     fi
 
-    # Step 4: Generate covariates
-    cov_file="${dataset_dir}/covariates.csv"
     if [ ! -f "$cov_file" ]; then
-        generate_covariates "$N" "$((seed + 2000))" "$cov_file"
+        generate_covariates "$N" "$((seed + 2000))" "$cov_file" &
+        pids+=($!)
     else
         log "Covariates file already exists, skipping"
     fi
 
-    # Step 5: Generate phenotype
+    # Wait for parallel tasks
+    for pid in "${pids[@]+"${pids[@]}"}"; do
+        wait "$pid" || { log "ERROR: Background task $pid failed"; exit 1; }
+    done
+
+    # Step 4: Generate phenotype (depends on environment file)
     pheno_file="${dataset_dir}/phenotype.csv"
     if [ ! -f "$pheno_file" ]; then
         generate_phenotype "$bed_file" "$env_file" "$((seed + 3000))" "$pheno_file"
     else
         log "Phenotype file already exists, skipping"
     fi
-
-    # Optional: Clean up intermediate VCF to save space
-    # rm -f "$vcf_file"
 
     log "Completed: $dataset_dir"
     echo ""

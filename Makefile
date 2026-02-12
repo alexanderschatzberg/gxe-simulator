@@ -3,6 +3,7 @@
 SAMPLE_FREQ_HZ = 100
 N_INDIVIDUALS = 291273
 SEQ_LENGTH = 7774235
+NTHREADS = 16
 
 DATA_DIR = /pscratch/sd/q/qys/genie/data_$(N_INDIVIDUALS)_$(SEQ_LENGTH)
 
@@ -66,7 +67,7 @@ $(DATA_DIR)/genotype.bed $(DATA_DIR)/genotype.bim $(DATA_DIR)/genotype.fam: $(DA
 
 $(DATA_DIR)/freq_tmp.afreq $(DATA_DIR)/freq_tmp.log: $(DATA_DIR)/genotype.bed $(DATA_DIR)/genotype.bim $(DATA_DIR)/genotype.fam plink2
 	@echo Making $@ at $$(date +%s)| tee /dev/stderr
-	time ./plink2 --bfile $(DATA_DIR)/genotype --freq --out $(DATA_DIR)/freq_tmp
+	time ./plink2 --bfile $(DATA_DIR)/genotype --freq --threads $(NTHREADS) --out $(DATA_DIR)/freq_tmp
 
 $(DATA_DIR)/ld_tmp.log $(DATA_DIR)/ld_tmp.vcor: $(DATA_DIR)/genotype.bed $(DATA_DIR)/genotype.bim $(DATA_DIR)/genotype.fam plink2
 	@echo Making $@ at $$(date +%s)| tee /dev/stderr
@@ -75,6 +76,7 @@ $(DATA_DIR)/ld_tmp.log $(DATA_DIR)/ld_tmp.vcor: $(DATA_DIR)/genotype.bed $(DATA_
 		--ld-window-kb 1000 \
 		--ld-window 999999 \
 		--ld-window-r2 0 \
+		--threads $(NTHREADS) \
 		--out $(DATA_DIR)/ld_tmp
 
 $(DATA_DIR)/maf_ld.txt: $(DATA_DIR)/ld_tmp.vcor $(DATA_DIR)/freq_tmp.afreq
@@ -136,7 +138,7 @@ $(DATA_DIR)/profiling/simul_%.out $(DATA_DIR)/profiling/perf_%.data: $(DATA_DIR)
 			--phenotype $(DATA_DIR)/pheno_gxe/0.pheno \
 			--covariate $(DATA_DIR)/simul.cov \
 			--annot $(DATA_DIR)/annotations.txt \
-			--output $(DATA_DIR)/simul_$*.out \
+			--output $(DATA_DIR)/profiling/simul_$*.out \
 			--environment $(DATA_DIR)/env.txt \
 			--model G+GxE+NxE \
 			--num-vec 10 \
